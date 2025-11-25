@@ -1,0 +1,32 @@
+{
+  "name": "Rust & Python (uv) Dev Environment",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/rust-log-analyzer",
+
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "vadimcn.vscode-lldb",
+        "eamodio.gitlens"
+      ]
+    }
+  },
+
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh"
+}

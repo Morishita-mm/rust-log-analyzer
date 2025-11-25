@@ -1,0 +1,20 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/rust:1-1-bullseye
+    volumes:
+      - ../:/workspaces/rust-log-analyzer:cached
+    
+    command: sleep infinity
+
+    networks:
+      - dev-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
