@@ -31,6 +31,20 @@ def process_logs(logs_buffer):
                                                                           (pl.col("level") == "ERROR").sum().alias("error_count"),  # 期間内のエラー回数
                                                                           pl.col("service").mode().first().alias("top_service")     # 最もログの出力が多かったサービス
                                                                         ])
+        aggregated_df = aggregated_df.with_columns([
+            pl.col("timestamp").alias("window_start"),
+            (pl.col("timestamp") + pl.duration(seconds=1)).alias("window_end")
+        ])
+
+        # 不要になった元の 'timestamp' 列を除外し、列の順序を整理します（Rust側の構造体に合わせるため）
+        aggregated_df = aggregated_df.select([
+            "window_start",
+            "window_end",
+            "total_count",
+            "error_count",
+            "top_service"
+        ])
+        
         # 4. 集計結果をJSON文字列に変換
         stats_json = aggregated_df.write_json()
         
