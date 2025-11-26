@@ -9,7 +9,9 @@
       "version": "3.11"
     },
     "ghcr.io/devcontainers/features/common-utils:2": {
-      "configureZshAsDefaultShell": true
+      "configureZshAsDefaultShell": true,
+      "installZsh": true,
+      "upgradePackages": true
     }
   },
 
