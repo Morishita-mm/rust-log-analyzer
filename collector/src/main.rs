@@ -1,6 +1,7 @@
 mod tui;
 
 use anyhow::Result;
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -46,6 +47,9 @@ async fn main() -> Result<()> {
         
         // 描画の更新間隔
         let mut tick_rate = time::interval(std::time::Duration::from_millis(TICK_RATE));
+
+        // キー入力イベント監視用のストリームを作成
+        let mut event_stream = event::EventStream::new();
     
         loop {
             tokio::select! {
@@ -54,6 +58,17 @@ async fn main() -> Result<()> {
                     // ここで描画関数を呼び出す
                     terminal.draw(|f| tui::ui(f))?;
                 }
+
+                // キー入力イベントの処理
+                Some(Ok(event)) = event_stream.next() => {
+                    // キーが「押された」時で、かつキーコードが 'q' の場合
+                    if let Event::Key(key) = event {
+                        if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
+                            break;
+                        }
+                    }
+                    // TODO: 他のキー操作についてもここ、もしくは別ファイルに分割して追加する
+                },
 
                 // メッセージの受信処理
                 Some(msg) = stream.next() => {
@@ -78,7 +93,6 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        #[allow(unreachable_code)]
         Ok(())
     }.await;
 
