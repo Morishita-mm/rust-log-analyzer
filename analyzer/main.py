@@ -1,7 +1,6 @@
 import redis
 import json
 import time
-import datetime
 import polars as pl
 
 # Redis conf
@@ -27,10 +26,12 @@ def process_logs(logs_buffer):
         df = df.with_columns(pl.col("timestamp").str.to_datetime())
 
         # 3. 集計処理（group_by_dynamicで時間ウィンドウ集計）
-        aggregated_df = df.group_by_dynamic("timestamp", every="1s").agg([pl.len().alias("total_count"),                            # 期間内の総ログ数
-                                                                          (pl.col("level") == "ERROR").sum().alias("error_count"),  # 期間内のエラー回数
-                                                                          pl.col("service").mode().first().alias("top_service")     # 最もログの出力が多かったサービス
-                                                                        ])
+        aggregated_df = df.group_by_dynamic("timestamp", every="1s").agg([pl.len().alias("total_count").cast(pl.Int64), # 期間内の総ログ数
+                                                                          (pl.col("level") == "ERROR").sum().alias(
+                                                                              "error_count").cast(pl.Int64),  # 期間内のエラー回数
+                                                                          pl.col("service").mode().first().alias(
+                                                                              "top_service")     # 最もログの出力が多かったサービス
+                                                                          ])
         aggregated_df = aggregated_df.with_columns([
             pl.col("timestamp").alias("window_start"),
             (pl.col("timestamp") + pl.duration(seconds=1)).alias("window_end")
@@ -44,10 +45,10 @@ def process_logs(logs_buffer):
             "error_count",
             "top_service"
         ])
-        
+
         # 4. 集計結果をJSON文字列に変換
         stats_json = aggregated_df.write_json()
-        
+
         # 5. Redisに送信（Rustが購読しているチャンネルへ）
         # TODO: Redisとの接続は引数で渡す、もしくはグローバルで定義するように変更する
         client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
@@ -56,46 +57,46 @@ def process_logs(logs_buffer):
     except Exception as e:
         print(f"❌ Error processing logs: {e}")
 
-def main():
-    client = redis.Redis(host='redis', port=6379, db=0)
-    pubsub = client.pubsub()
-    pubsub.subscribe(LOGS_CHANNEL)
 
-    print("🚀 Python Log Publisher started. Listening on '{LOGS_CHANNEL}'...")
-    
+def main():
+    try:
+        client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+        pubsub = client.pubsub()
+        pubsub.subscribe(LOGS_CHANNEL)
+        client.ping()
+        print(f"✅ Connected to Redis. Subscribed to {LOGS_CHANNEL}")
+    except redis.ConnectionError as e:
+        print(f"❌ Could not connect to Redis: {e}")
+        return
+
+    print(f"🚀 Starting dummy log publisher to channel '{LOGS_CHANNEL}'...")
+
     logs_buffer = []
     last_process_time = time.time()
-    
-    # ダミーログを別スレッドで送信する仕組みが必要だが、動作定義のため、受信ループの中で擬似的にログを生成してバッファに追加します
-    # TODO: 別スレッドで実施するように変更する
 
-    while True:
-        # --- 擬似的なログ生成（動作確認用）---
-        # 実際にはRedisからのメッセージ受信のみになる
-        dummy_log = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "level": "INFO" if time.time() % 2 > 0.5 else "ERROR",  # ランダムにERRORにする
-            "service": "auth-service",
-            "message": "User login successful"
-        }
-        logs_buffer.append(dummy_log)
-        time.sleep(0.1) # 0.1秒に1件ログが発生すると仮定
-        
-        # TODO: 本来はメッセージ受信ループがここに入る
-        # message = pubsub.get_message()
-        # if message and message['type'] == 'message':
-        #     try:
-        #         log_data = json.loads(message['data'])
-        #         logs_buffer.append(log_data)
-        #     except json.JSONDecodeError:
-        #         print("❌ Received invalid JSON")
+    try:
+        while True:
+            message = pubsub.get_message(timeout=0.1)
 
-        # 一定時間経過したらバッファを処理
-        current_time = time.time()
-        if current_time - last_process_time >= BUFFER_DURATION_SEC:
-            process_logs(logs_buffer)
-            logs_buffer = []   # バッファをクリア
-            last_process_time = current_time
+            if message and message['type'] == 'message':
+                try:
+                    log_data = json.loads(message['data'])
+                    logs_buffer.append(log_data)
+                except json.JSONDecodeError:
+                    print(f"❌ Received invalid JSON on {LOGS_CHANNEL}")
+
+            current_time = time.time()
+            if current_time - last_process_time >= BUFFER_DURATION_SEC:
+                if logs_buffer:
+                    if logs_buffer:
+                        process_logs(logs_buffer)
+                        logs_buffer = []
+                    last_process_time = current_time
+
+    except KeyboardInterrupt:
+        print("\n🔴 Log analyzer stopped.")
+        pubsub.close()
+
 
 if __name__ == "__main__":
     main()
