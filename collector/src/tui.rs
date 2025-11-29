@@ -14,7 +14,7 @@ use std::collections::VecDeque;
 use std::io::{Stdout, stdout};
 
 use crate::state::AppState;
-use crate::{AggregatedStats, LogEntry};
+use crate::types::{AggregatedStats, LogEntry};
 
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 

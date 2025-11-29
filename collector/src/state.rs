@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 // TODO: type.rsに型定義モジュールを移動させる
-use crate::{AggregatedStats, LogEntry};
+use crate::types::{AggregatedStats, LogEntry};
 
 /// TUIで表示するログの最大保持件数
 const MAX_LOGS: usize = 500;
