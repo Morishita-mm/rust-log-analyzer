@@ -24,8 +24,19 @@ impl AppState {
 
     pub fn add_log(&mut self, entry: LogEntry) {
         self.logs.push_front(entry);
+
+        if let Some(i) = self.selected_log_index {
+            self.selected_log_index = Some(i + 1);
+        }
+
         if self.logs.len() > MAX_LOGS {
             self.logs.pop_back();
+
+            if let Some(i) = self.selected_log_index {
+                if i >= self.logs.len() {
+                    self.selected_log_index = Some(self.logs.len() - 1);
+                }
+            }
         }
     }
 
@@ -42,10 +53,10 @@ impl AppState {
             // まだ選択されていない場合は、一番上（0番目）を選択
             None => 0,
             // すでに選択されている場合は、次のインデックスへ
-            Some(i ) => {
+            Some(i) => {
                 if i >= self.logs.len() - 1 {
                     i
-                } else { 
+                } else {
                     i + 1
                 }
             }

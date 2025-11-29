@@ -24,12 +24,12 @@ pub async fn run() -> Result<()> {
         let client = redis::Client::open("redis://redis/")?;
         let mut con = client.get_async_pubsub().await?;
         con.subscribe(LOGS_CHANNEL).await?;
-        con.subscribe(STATS_CHANNEL).await?;    
+        con.subscribe(STATS_CHANNEL).await?;
         let mut stream = con.on_message();
-        
+
         let mut tick_rate = time::interval(std::time::Duration::from_millis(TICK_RATE));
         let mut event_stream = event::EventStream::new();
-    
+
         loop {
             tokio::select! {
                 // 定期的な描画タイミング

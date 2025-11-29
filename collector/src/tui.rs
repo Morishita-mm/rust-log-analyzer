@@ -69,7 +69,8 @@ fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
     let items: Vec<ListItem> = state
         .logs
         .iter()
-        .map(|log| {
+        .enumerate()
+        .map(|(i, log)| {
             let level_style = match log.level.as_str() {
                 "ERROR" => Style::default().fg(Color::Red),
                 "WARN" => Style::default().fg(Color::Yellow),
@@ -77,7 +78,7 @@ fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
             };
 
             let line = Line::from(vec![
-                Span::raw("["),
+                Span::raw(format!("{:>3}: [", i)),
                 Span::raw(&log.timestamp),
                 Span::raw("] ["),
                 Span::styled(&log.level, level_style),
