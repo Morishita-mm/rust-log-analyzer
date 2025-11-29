@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use base64::{Engine as _, engine::general_purpose};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use futures_util::{StreamExt, lock::Mutex};
+use std::io::{Write, stdout};
 use tokio::time;
 
 use crate::state::AppState;
@@ -61,6 +63,21 @@ pub async fn run() -> Result<()> {
                             KeyCode::Esc => {
                                 state.unselect_log();
                             }
+                            // コピー処理
+                            KeyCode::Char('c') => {
+                                // 選択中のログのインデックスを取得
+                                if let Some(index) = state.selected_log_index {
+                                    // インデックスを使ってログデータを取得
+                                    if let Some(log) = state.logs.get(index) {
+                                        // ログのメッセージ部分をクリップボードにコピー
+                                        if let Err(e) = copy_to_clipboard(&log.message) {
+                                            eprintln!("Failed to copy to clipboard: {}", e);
+                                        } else {
+                                            // TODO: コピー完了を伝える仕組みを作成する
+                                        }
+                                    }
+                                }
+                            }
                             _ => {}
                         }
                     }
@@ -101,4 +118,21 @@ pub async fn run() -> Result<()> {
     tui::restore()?;
 
     app_result
+}
+
+fn copy_to_clipboard(text: &str) -> Result<()> {
+    // テキストをBase64にエンコード
+    let encoded = general_purpose::STANDARD.encode(text);
+
+    // OSC 52 エスケープシーケンスを構築
+    // \x1b]52;c;{Base64文字列}\x07 という形式
+    // これをターミナルが解釈してクリップボードに設定する
+    let osc052_sequence = format!("\x1b]52;c;{}\x07", encoded);
+
+    // 標準出力に書き出す
+    let mut out = stdout();
+    write!(out, "{}", osc052_sequence)?;
+    out.flush()?;
+
+    Ok(())
 }
