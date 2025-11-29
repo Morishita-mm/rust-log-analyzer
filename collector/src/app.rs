@@ -41,14 +41,30 @@ pub async fn run() -> Result<()> {
 
                 // キー入力イベントの処理
                 Some(Ok(event)) = event_stream.next() => {
-                    // キーが「押された」時で、かつキーコードが 'q' の場合
                     if let Event::Key(key) = event {
-                        if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                            break;
+                        let mut state = state_for_main_loop.lock().await;
+
+                        match key.code {
+                            // 終了
+                            KeyCode::Char('q') => {
+                                break;
+                            }
+                            // 上へスクロール
+                            KeyCode::Up | KeyCode::Char('k') => {
+                                state.select_previous_log();
+                            }
+                            // 下へスクロール
+                            KeyCode::Down | KeyCode::Char('j') => {
+                                state.select_next_log();
+                            }
+                            // 選択解除（最新のログ表示に戻る）
+                            KeyCode::Esc => {
+                                state.unselect_log();
+                            }
+                            _ => {}
                         }
                     }
-                    // TODO: 他のキー操作についてもここ、もしくは別ファイルに分割して追加する
-                },
+                }
 
                 // メッセージの受信処理
                 Some(msg) = stream.next() => {

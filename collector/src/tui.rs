@@ -7,8 +7,8 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     prelude::*,
-    style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use std::collections::VecDeque;
 use std::io::{Stdout, stdout};
@@ -44,7 +44,7 @@ pub fn ui(f: &mut Frame, state: &AppState) {
         .split(f.area());
 
     render_filter_pane(f, chunks[0]);
-    render_logs_pane(f, chunks[1], &state.logs);
+    render_logs_pane(f, chunks[1], &state);
     render_stats_pane(f, chunks[2], &state.latest_stats);
 }
 
@@ -54,17 +54,20 @@ fn render_filter_pane(f: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .title("Filter Input")
         .border_style(Style::default().fg(Color::Yellow));
-    let text = Paragraph::new("Type regex filter here... (Press 'q' to quit)").block(block);
+    let text =
+        Paragraph::new("Type regex filter here... (Use Up/Down/j/k to scroll logs, 'q' to quit)")
+            .block(block);
     f.render_widget(text, area);
 }
 
-fn render_logs_pane(f: &mut Frame, area: Rect, logs: &VecDeque<LogEntry>) {
+fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!("Real-time Logs ({} items)", logs.len()))
+        .title(format!("Real-time Logs ({} items)", state.logs.len()))
         .border_style(Style::default().fg(Color::Blue));
 
-    let items: Vec<ListItem> = logs
+    let items: Vec<ListItem> = state
+        .logs
         .iter()
         .map(|log| {
             let level_style = match log.level.as_str() {
@@ -86,9 +89,15 @@ fn render_logs_pane(f: &mut Frame, area: Rect, logs: &VecDeque<LogEntry>) {
         })
         .collect();
 
-    let list = List::new(items).block(block);
+    let mut list_state = ListState::default();
+    list_state.select(state.selected_log_index);
 
-    f.render_widget(list, area);
+    let list = List::new(items)
+        .block(block)
+        .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+        .highlight_symbol(">> ");
+
+    f.render_stateful_widget(list, area, &mut list_state);
 }
 
 fn render_stats_pane(f: &mut Frame, area: Rect, stats: &Option<AggregatedStats>) {

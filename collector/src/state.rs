@@ -10,6 +10,7 @@ const MAX_LOGS: usize = 500;
 pub struct AppState {
     pub logs: VecDeque<LogEntry>,
     pub latest_stats: Option<AggregatedStats>,
+    pub selected_log_index: Option<usize>,
 }
 
 impl AppState {
@@ -17,6 +18,7 @@ impl AppState {
         Self {
             logs: VecDeque::with_capacity(MAX_LOGS),
             latest_stats: None,
+            selected_log_index: None,
         }
     }
 
@@ -29,5 +31,39 @@ impl AppState {
 
     pub fn update_stats(&mut self, stats: AggregatedStats) {
         self.latest_stats = Some(stats);
+    }
+
+    pub fn select_next_log(&mut self) {
+        if self.logs.is_empty() {
+            return;
+        }
+
+        let i = match self.selected_log_index {
+            // まだ選択されていない場合は、一番上（0番目）を選択
+            None => 0,
+            // すでに選択されている場合は、次のインデックスへ
+            Some(i ) => {
+                if i >= self.logs.len() - 1 {
+                    i
+                } else { 
+                    i + 1
+                }
+            }
+        };
+        self.selected_log_index = Some(i);
+    }
+
+    pub fn select_previous_log(&mut self) {
+        if self.logs.is_empty() {
+            return;
+        }
+
+        if let Some(i) = self.selected_log_index {
+            self.selected_log_index = Some(i.saturating_sub(1));
+        }
+    }
+
+    pub fn unselect_log(&mut self) {
+        self.selected_log_index = None;
     }
 }
