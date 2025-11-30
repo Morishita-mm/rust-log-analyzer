@@ -8,13 +8,14 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::*,
     style::{Color, Modifier, Style},
+    symbols::border,
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
-use std::collections::VecDeque;
 use std::io::{Stdout, stdout};
 
 use crate::state::AppState;
-use crate::types::{AggregatedStats, LogEntry};
+use crate::state::InputMode;
+use crate::types::AggregatedStats;
 
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
@@ -49,11 +50,16 @@ pub fn ui(f: &mut Frame, state: &AppState) {
 }
 
 fn render_filter_pane(f: &mut Frame, area: Rect, state: &AppState) {
+    let border_style = match state.input_mode {
+        InputMode::Editing => Style::default().fg(Color::Green),
+        InputMode::Normal => Style::default().fg(Color::Yellow),
+    };
+
     // 枠線とタイトル付きのブロックを作成
     let block = Block::default()
         .borders(Borders::ALL)
         .title("Filter Input")
-        .border_style(Style::default().fg(Color::Yellow));
+        .border_style(border_style);
 
     let text_content = if state.filter_text.is_empty() {
         Span::styled(
@@ -88,7 +94,10 @@ fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
             };
 
             let line = Line::from(vec![
-                Span::styled(format!("{:>3}: ", i), Style::default().add_modifier(Modifier::DIM)),
+                Span::styled(
+                    format!("{:>3}: ", i),
+                    Style::default().add_modifier(Modifier::DIM),
+                ),
                 Span::raw("["),
                 Span::raw(&log.timestamp),
                 Span::raw("] ["),

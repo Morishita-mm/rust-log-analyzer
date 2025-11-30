@@ -7,7 +7,7 @@ use futures_util::{StreamExt, lock::Mutex};
 use std::io::{Write, stdout};
 use tokio::time;
 
-use crate::state::AppState;
+use crate::state::{AppState, InputMode};
 use crate::tui;
 use crate::types::{AggregatedStats, LOGS_CHANNEL, LogEntry, STATS_CHANNEL};
 
@@ -50,39 +50,69 @@ pub async fn run() -> Result<()> {
                     if let Event::Key(key) = event {
                         let mut state = state_for_main_loop.lock().await;
 
-                        match key.code {
-                            // 終了
-                            KeyCode::Char('q') => {
-                                break;
-                            }
-                            // 上へスクロール
-                            KeyCode::Up | KeyCode::Char('k') => {
-                                state.select_previous_log();
-                            }
-                            // 下へスクロール
-                            KeyCode::Down | KeyCode::Char('j') => {
-                                state.select_next_log();
-                            }
-                            // 選択解除（最新のログ表示に戻る）
-                            KeyCode::Esc => {
-                                state.unselect_log();
-                            }
-                            // コピー処理
-                            KeyCode::Char('c') => {
-                                // 選択中のログのインデックスを取得
-                                if let Some(index) = state.selected_log_index {
-                                    // インデックスを使ってログデータを取得
-                                    if let Some(log) = state.logs.get(index) {
-                                        // ログのメッセージ部分をクリップボードにコピー
-                                        if let Err(e) = copy_to_clipboard(&log.message) {
-                                            eprintln!("Failed to copy to clipboard: {}", e);
-                                        } else {
-                                            // TODO: コピー完了を伝える仕組みを作成する
+                        match state.input_mode {
+                            InputMode::Normal =>  match key.code {                                
+                                // 終了
+                                KeyCode::Char('q') => {
+                                    break;
+                                }
+                                // 上へスクロール
+                                KeyCode::Up | KeyCode::Char('k') => {
+                                    state.select_previous_log();
+                                }
+                                // 下へスクロール
+                                KeyCode::Down | KeyCode::Char('j') => {
+                                    state.select_next_log();
+                                }
+                                // 選択解除（最新のログ表示に戻る）
+                                KeyCode::Esc => {
+                                    state.unselect_log();
+                                }
+                                // 'i'キーで入力モードに入る
+                                KeyCode::Char('i') => {
+                                    state.input_mode = InputMode::Editing;
+                                }
+                                // コピー処理
+                                KeyCode::Char('c') => {
+                                    // 選択中のログのインデックスを取得
+                                    if let Some(index) = state.selected_log_index {
+                                        // インデックスを使ってログデータを取得
+                                        if let Some(log) = state.logs.get(index) {
+                                            // ログのメッセージ部分をクリップボードにコピー
+                                            if let Err(e) = copy_to_clipboard(&log.message) {
+                                                eprintln!("Failed to copy to clipboard: {}", e);
+                                            } else {
+                                                // TODO: コピー完了を伝える仕組みを作成する
+                                            }
                                         }
                                     }
                                 }
+                                _ => {}
+                            },
+
+                            InputMode::Editing => match key.code {
+                                // 閲覧モードへ戻る
+                                KeyCode::Esc | KeyCode::Enter => {
+                                    state.input_mode = InputMode::Normal;
+                                }
+                                // Backspaceキーで1文字削除
+                                KeyCode::Backspace => {
+                                    state.filter_text.pop();
+
+                                    let new_text = state.filter_text.clone();
+                                    state.set_filter(new_text);
+                                }
+                                // 文字キー入力で追加
+                                KeyCode::Char(c) => {
+                                    state.filter_text.push(c);
+
+                                    // フィルター内容の更新
+                                    let new_text = state.filter_text.clone();
+                                    state.set_filter(new_text);
+                                }
+                                
+                                _ => {}
                             }
-                            _ => {}
                         }
                     }
                 }

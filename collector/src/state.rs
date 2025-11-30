@@ -1,9 +1,16 @@
-use std::collections::VecDeque;
 use crate::types::{AggregatedStats, LogEntry};
 use regex::Regex;
+use std::collections::VecDeque;
 
 /// TUIで表示するログの最大保持件数
 const MAX_LOGS: usize = 500;
+
+/// アプリケーションの入力モードの管理用の列挙型
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum InputMode {
+    Normal,
+    Editing,
+}
 
 /// アプリケーション全体の状態を保持する構造体
 #[derive(Debug)]
@@ -13,6 +20,7 @@ pub struct AppState {
     pub selected_log_index: Option<usize>,
     pub filter_text: String,
     pub filter_regex: Option<Regex>,
+    pub input_mode: InputMode,
 }
 
 impl AppState {
@@ -23,6 +31,7 @@ impl AppState {
             selected_log_index: None,
             filter_text: String::new(),
             filter_regex: None,
+            input_mode: InputMode::Normal,
         }
     }
 
