@@ -1,4 +1,4 @@
-# RustLogStream (仮)
+# RustLogAnalyzer
 
 **リアルタイム・ログ分析CUIツール**
 Rust (TUI/非同期), Python (データ分析), Redis (メッセージブローカー) を用いたマイクロサービスアーキテクチャの実証プロジェクト。
