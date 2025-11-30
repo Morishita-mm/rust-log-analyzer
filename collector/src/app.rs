@@ -37,6 +37,10 @@ pub async fn run() -> Result<()> {
         let mut event_stream = event::EventStream::new();
 
         loop {
+            {
+                let state = state_for_main_loop.lock().await;
+                terminal.draw(|f| tui::ui(f, &state))?;
+            }
             tokio::select! {
                 // 定期的な描画タイミング
                 _ = tick_rate.tick() => {
