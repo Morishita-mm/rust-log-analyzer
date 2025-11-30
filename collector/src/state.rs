@@ -20,6 +20,7 @@ pub struct AppState {
     pub selected_log_index: Option<usize>,
     pub filter_text: String,
     pub filter_regex: Option<Regex>,
+    pub editing_text: String,
     pub input_mode: InputMode,
 }
 
@@ -31,6 +32,7 @@ impl AppState {
             selected_log_index: None,
             filter_text: String::new(),
             filter_regex: None,
+            editing_text: String::new(),
             input_mode: InputMode::Normal,
         }
     }
@@ -101,5 +103,22 @@ impl AppState {
                 Err(_) => self.filter_regex = None,
             }
         }
+    }
+
+    pub fn start_editing(&mut self) {
+        self.editing_text = self.filter_text.clone();
+        self.input_mode = InputMode::Editing;
+    }
+
+    pub fn submit_editing(&mut self) {
+        let text = self.editing_text.clone();
+        self.set_filter(text);
+        self.editing_text.clear();
+        self.input_mode = InputMode::Normal;
+    }
+
+    pub fn cancel_editing(&mut self) {
+        self.editing_text.clear();
+        self.input_mode = InputMode::Normal;
     }
 }

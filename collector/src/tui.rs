@@ -61,15 +61,24 @@ fn render_filter_pane(f: &mut Frame, area: Rect, state: &AppState) {
         .title("Filter Input")
         .border_style(border_style);
 
-    let text_content = if state.filter_text.is_empty() {
+    let text_to_display = match state.input_mode {
+        InputMode::Editing => &state.editing_text,
+        InputMode::Normal => &state.filter_text,
+    };
+
+    let text_content = if text_to_display.is_empty() {
+        let placeholder = match state.input_mode {
+            InputMode::Editing => "Type regex filter here... (Enter to apply, Esc to cancel)",
+            InputMode::Normal => "No filter applied. (Press 'i' to edit filter)"
+        };
         Span::styled(
-            "Type regex filter here... (Press 'i' to enter editing mode)",
+            placeholder,
             Style::default().add_modifier(Modifier::DIM), // 薄い色で表示
         )
     } else {
         // 入力されたテキストをそのまま表示
         // TODO: カーソル表示などの追加
-        Span::raw(&state.filter_text)
+        Span::raw(text_to_display)
     };
 
     let paragraph = Paragraph::new(text_content).block(block);

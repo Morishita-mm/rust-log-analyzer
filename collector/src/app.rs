@@ -95,24 +95,22 @@ pub async fn run() -> Result<()> {
                             },
 
                             InputMode::Editing => match key.code {
-                                // 閲覧モードへ戻る
-                                KeyCode::Esc | KeyCode::Enter => {
-                                    state.input_mode = InputMode::Normal;
+                                // Escでキャンセルして閲覧モードへ
+                                KeyCode::Esc => {
+                                    state.cancel_editing();
                                 }
+                                // Enterで確定して閲覧モードへ
+                                KeyCode::Enter => {
+                                    state.submit_editing();
+                                }
+
                                 // Backspaceキーで1文字削除
                                 KeyCode::Backspace => {
-                                    state.filter_text.pop();
-
-                                    let new_text = state.filter_text.clone();
-                                    state.set_filter(new_text);
+                                    state.editing_text.pop();
                                 }
                                 // 文字キー入力で追加
                                 KeyCode::Char(c) => {
-                                    state.filter_text.push(c);
-
-                                    // フィルター内容の更新
-                                    let new_text = state.filter_text.clone();
-                                    state.set_filter(new_text);
+                                    state.editing_text.push(c);
                                 }
                                 
                                 _ => {}
