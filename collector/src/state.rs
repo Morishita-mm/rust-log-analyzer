@@ -65,9 +65,7 @@ impl AppState {
         }
 
         let i = match self.selected_log_index {
-            // まだ選択されていない場合は、一番上（0番目）を選択
             None => 0,
-            // すでに選択されている場合は、次のインデックスへ
             Some(i) => {
                 if i >= self.logs.len() - 1 {
                     i

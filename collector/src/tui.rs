@@ -8,7 +8,6 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::*,
     style::{Color, Modifier, Style},
-    symbols::border,
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use std::io::{Stdout, stdout};
@@ -69,7 +68,7 @@ fn render_filter_pane(f: &mut Frame, area: Rect, state: &AppState) {
     let text_content = if text_to_display.is_empty() {
         let placeholder = match state.input_mode {
             InputMode::Editing => "Type regex filter here... (Enter to apply, Esc to cancel)",
-            InputMode::Normal => "No filter applied. (Press 'i' to edit filter)"
+            InputMode::Normal => "No filter applied. (Press 'i' to edit filter)",
         };
         Span::styled(
             placeholder,

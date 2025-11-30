@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode};
 use futures_util::{StreamExt, lock::Mutex};
 use std::io::{Write, stdout};
 use tokio::time;
@@ -14,18 +14,12 @@ use crate::types::{AggregatedStats, LOGS_CHANNEL, LogEntry, STATS_CHANNEL};
 const TICK_RATE: u64 = 100;
 
 pub async fn run() -> Result<()> {
-    // 共有するアプリケーションの状態
     let app_state = Arc::new(Mutex::new(AppState::new()));
-
-    // ログフィルタリングの動作確認
-    // app_state.lock().await.set_filter("auth-service".to_string());
 
     let state_for_main_loop = app_state.clone();
 
-    // TUIの初期化
     let mut terminal = tui::init()?;
 
-    // Docker内の 'redis' ホストへ接続
     let app_result = async {
         let client = redis::Client::open("redis://redis/")?;
         let mut con = client.get_async_pubsub().await?;
@@ -42,10 +36,8 @@ pub async fn run() -> Result<()> {
                 terminal.draw(|f| tui::ui(f, &state))?;
             }
             tokio::select! {
-                // 定期的な描画タイミング
                 _ = tick_rate.tick() => {
                     let state = state_for_main_loop.lock().await;
-                    // ここで描画関数を呼び出す
                     terminal.draw(|f| tui::ui(f, &state))?;
                 }
 
@@ -75,21 +67,11 @@ pub async fn run() -> Result<()> {
                                 // 'i'キーで入力モードに入る
                                 KeyCode::Char('i') => {
                                     state.input_mode = InputMode::Editing;
+                                    state.start_editing();
                                 }
                                 // コピー処理
                                 KeyCode::Char('c') => {
-                                    // 選択中のログのインデックスを取得
-                                    if let Some(index) = state.selected_log_index {
-                                        // インデックスを使ってログデータを取得
-                                        if let Some(log) = state.logs.get(index) {
-                                            // ログのメッセージ部分をクリップボードにコピー
-                                            if let Err(e) = copy_to_clipboard(&log.message) {
-                                                eprintln!("Failed to copy to clipboard: {}", e);
-                                            } else {
-                                                // TODO: コピー完了を伝える仕組みを作成する
-                                            }
-                                        }
-                                    }
+                                    handle_copy_action(&state);
                                 }
                                 _ => {}
                             },
@@ -123,16 +105,13 @@ pub async fn run() -> Result<()> {
                 Some(msg) = stream.next() => {
                     let channel_name = msg.get_channel_name();
                     if let Ok(payload) = msg.get_payload::<String>() {
-                        // 共有状態のロックを非同期に取得
                         let mut state = state_for_main_loop.lock().await;
 
                         match channel_name {
                             LOGS_CHANNEL => {
                                 if let Ok(log_entry) = serde_json::from_str::<LogEntry>(&payload) {
-                                    // フィルタリング対象の文字列
                                     let target_text = format!("{} {} {}", log_entry.level, log_entry.service, log_entry.message);
 
-                                    // フィルタが設定されているかチェック
                                     let should_add = if let Some(regex) = &state.filter_regex {
                                         regex.is_match(&target_text)
                                     } else {
@@ -168,6 +147,16 @@ pub async fn run() -> Result<()> {
     app_result
 }
 
+fn handle_copy_action(state: &AppState) {
+    if let Some(index) = state.selected_log_index {
+        if let Some(log) = state.logs.get(index) {
+            if let Err(e) = copy_to_clipboard(&log.message) {
+                eprintln!("Failed to copy to clipboard: {}", e);
+            }
+        }
+    }
+}
+
 fn copy_to_clipboard(text: &str) -> Result<()> {
     // テキストをBase64にエンコード
     let encoded = general_purpose::STANDARD.encode(text);
@@ -177,7 +166,6 @@ fn copy_to_clipboard(text: &str) -> Result<()> {
     // これをターミナルが解釈してクリップボードに設定する
     let osc052_sequence = format!("\x1b]52;c;{}\x07", encoded);
 
-    // 標準出力に書き出す
     let mut out = stdout();
     write!(out, "{}", osc052_sequence)?;
     out.flush()?;
