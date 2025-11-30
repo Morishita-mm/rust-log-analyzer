@@ -43,21 +43,31 @@ pub fn ui(f: &mut Frame, state: &AppState) {
         ])
         .split(f.area());
 
-    render_filter_pane(f, chunks[0]);
+    render_filter_pane(f, chunks[0], &state);
     render_logs_pane(f, chunks[1], &state);
     render_stats_pane(f, chunks[2], &state.latest_stats);
 }
 
-fn render_filter_pane(f: &mut Frame, area: Rect) {
+fn render_filter_pane(f: &mut Frame, area: Rect, state: &AppState) {
     // 枠線とタイトル付きのブロックを作成
     let block = Block::default()
         .borders(Borders::ALL)
         .title("Filter Input")
         .border_style(Style::default().fg(Color::Yellow));
-    let text =
-        Paragraph::new("Type regex filter here... (Use Up/Down/j/k to scroll logs, 'q' to quit)")
-            .block(block);
-    f.render_widget(text, area);
+
+    let text_content = if state.filter_text.is_empty() {
+        Span::styled(
+            "Type regex filter here... (Press 'i' to enter editing mode)",
+            Style::default().add_modifier(Modifier::DIM), // 薄い色で表示
+        )
+    } else {
+        // 入力されたテキストをそのまま表示
+        // TODO: カーソル表示などの追加
+        Span::raw(&state.filter_text)
+    };
+
+    let paragraph = Paragraph::new(text_content).block(block);
+    f.render_widget(paragraph, area);
 }
 
 fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
@@ -78,7 +88,8 @@ fn render_logs_pane(f: &mut Frame, area: Rect, state: &AppState) {
             };
 
             let line = Line::from(vec![
-                Span::raw(format!("{:>3}: [", i)),
+                Span::styled(format!("{:>3}: ", i), Style::default().add_modifier(Modifier::DIM)),
+                Span::raw("["),
                 Span::raw(&log.timestamp),
                 Span::raw("] ["),
                 Span::styled(&log.level, level_style),

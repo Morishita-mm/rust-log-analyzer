@@ -16,6 +16,10 @@ const TICK_RATE: u64 = 100;
 pub async fn run() -> Result<()> {
     // 共有するアプリケーションの状態
     let app_state = Arc::new(Mutex::new(AppState::new()));
+
+    // ログフィルタリングの動作確認
+    // app_state.lock().await.set_filter("auth-service".to_string());
+
     let state_for_main_loop = app_state.clone();
 
     // TUIの初期化
@@ -93,7 +97,19 @@ pub async fn run() -> Result<()> {
                         match channel_name {
                             LOGS_CHANNEL => {
                                 if let Ok(log_entry) = serde_json::from_str::<LogEntry>(&payload) {
-                                    state.add_log(log_entry);
+                                    // フィルタリング対象の文字列
+                                    let target_text = format!("{} {} {}", log_entry.level, log_entry.service, log_entry.message);
+
+                                    // フィルタが設定されているかチェック
+                                    let should_add = if let Some(regex) = &state.filter_regex {
+                                        regex.is_match(&target_text)
+                                    } else {
+                                        true
+                                    };
+
+                                    if should_add {
+                                        state.add_log(log_entry);
+                                    }
                                 }
                             }
                             STATS_CHANNEL => {

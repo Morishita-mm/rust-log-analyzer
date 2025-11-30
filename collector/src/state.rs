@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
-// TODO: type.rsに型定義モジュールを移動させる
 use crate::types::{AggregatedStats, LogEntry};
+use regex::Regex;
 
 /// TUIで表示するログの最大保持件数
 const MAX_LOGS: usize = 500;
@@ -11,6 +11,8 @@ pub struct AppState {
     pub logs: VecDeque<LogEntry>,
     pub latest_stats: Option<AggregatedStats>,
     pub selected_log_index: Option<usize>,
+    pub filter_text: String,
+    pub filter_regex: Option<Regex>,
 }
 
 impl AppState {
@@ -19,6 +21,8 @@ impl AppState {
             logs: VecDeque::with_capacity(MAX_LOGS),
             latest_stats: None,
             selected_log_index: None,
+            filter_text: String::new(),
+            filter_regex: None,
         }
     }
 
@@ -76,5 +80,17 @@ impl AppState {
 
     pub fn unselect_log(&mut self) {
         self.selected_log_index = None;
+    }
+
+    pub fn set_filter(&mut self, text: String) {
+        self.filter_text = text.clone();
+        if text.is_empty() {
+            self.filter_regex = None;
+        } else {
+            match Regex::new(&text) {
+                Ok(re) => self.filter_regex = Some(re),
+                Err(_) => self.filter_regex = None,
+            }
+        }
     }
 }
