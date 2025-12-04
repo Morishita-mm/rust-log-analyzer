@@ -1,0 +1,40 @@
+# Vector設定ファイル (YAML形式: シンプルVRL版)
+data_dir: /var/lib/vector
+
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+# --- ソース（入力） ---
+sources:
+  docker_logs:
+    type: fluent
+    address: 0.0.0.0:24224
+    connection_keepalive: true
+
+# --- 変換（Transform: ログの正規化） ---
+transforms:
+  parse_docker_log:
+    type: remap
+    inputs:
+      - docker_logs
+    # YAMLの複数行文字列(|)を使うとVRLが見やすい
+    source: |
+      # 1. .logをパースしてルートにマージ (失敗時はパニックして破棄)
+      . = merge!(., parse_json!(.log))
+      # 2. 不要な .log フィールドを削除
+      del(.log)
+
+# --- シンク（出力） ---
+sinks:
+  redis_pubsub:
+    type: redis
+    # 入力元は Transform を指定
+    inputs:
+      - parse_docker_log
+    # エンドポイント（データベース番号0を指定）
+    endpoint: redis://host.docker.internal:6379/0
+    key: logs.ingest
+    data_type: channel
+    encoding:
+      codec: json
