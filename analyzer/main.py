@@ -21,10 +21,8 @@ def process_logs(logs_buffer):
     try:
         # 1. 辞書のリストからPolars DataFrameを作成
         df = pl.DataFrame(logs_buffer)
-
-        # 2. timestamp文字列をdatetime型にへんかn
-        df = df.with_columns(pl.col("timestamp").str.to_datetime())
-
+        df = df.with_columns(pl.col("timestamp").str.to_datetime(time_zone="UTC"))
+        
         # 3. 集計処理（group_by_dynamicで時間ウィンドウ集計）
         aggregated_df = df.group_by_dynamic("timestamp", every="1s").agg([pl.len().alias("total_count").cast(pl.Int64), # 期間内の総ログ数
                                                                           (pl.col("level") == "ERROR").sum().alias(
